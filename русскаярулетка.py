@@ -1,115 +1,47 @@
-import random
-import time
-import sys
-from colorama import init, Fore, Back, Style
-import pygame
-
-init(autoreset=True)
-pygame.mixer.init()
-
-try:
-    shot_sound = pygame.mixer.Sound("shot.wav")
-    click_sound = pygame.mixer.Sound("click.wav")
-except:
-    print(Fore.YELLOW + "Звуковые эффекты не найдены, игра продолжится без них")
+import requests
+import json
 
 
-class Revolver:
-    def __init__(self, chambers=6):
-        self.chambers = chambers
-        self.bullet_position = random.randint(1, chambers)
-        self.current_position = 1
+API_KEY = "DlWJGSjUANbZ5tRjXI3nHhA8AC6S44OX"  
+API_URL = "https://api.mistral.ai/v1/chat/completions"
+MODEL_NAME = "mistral-large-latest"
 
-    def spin(self):
-        self.bullet_position = random.randint(1, self.chambers)
-        self.current_position = 1
-        print(Fore.CYAN + "\nБарабан крутится...")
-        time.sleep(2)
-        print(Fore.GREEN + "Барабан остановился. Готов к выстрелу.")
-        return self
+HEADERS = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {API_KEY}"
+}
 
-    def trigger_pull(self):
-        print(Fore.WHITE + Back.RED + "\nПалец на спусковом крючке...")
-        time.sleep(1.5)
+def send_query_to_mistral(prompt: str) -> str:
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
 
-        if self.current_position == self.bullet_position:
-            print(Fore.RED + Back.WHITE + "БАХ!!!")
-            try:
-                pygame.mixer.Sound.play(shot_sound)
-            except:
-                pass
-            time.sleep(1)
-            print(Fore.RED + "Ты проиграл. Игра окончена.")
-            self._show_bloody_animation()
-            return False
-        else:
-            print(Fore.GREEN + "*Щелк*")
-            try:
-                pygame.mixer.Sound.play(click_sound)
-            except:
-                pass
-            time.sleep(1)
-            print(Fore.YELLOW + "Повезло... на этот раз.")
-            self.current_position += 1
-            if self.current_position > self.chambers:
-                self.current_position = 1
-            return True
-
-    def _show_bloody_animation(self):
-        blood = [Fore.RED + "✖", Fore.RED + "✗", Fore.RED + "✘", Fore.RED + "💀"]
-        for _ in range(15):
-            print(random.choice(blood), end=" ")
-            sys.stdout.flush()
-            time.sleep(0.1)
-        print("\n")
-
-
-def get_player_choice():
-    print("\n" + Fore.MAGENTA + "Выбери действие:")
-    print(Fore.BLUE + "1. Крутить барабан")
-    print(Fore.BLUE + "2. Нажать курок")
-    print(Fore.RED + "3. Выйти")
-
-    while True:
-        choice = input(Fore.WHITE + "> ")
-        if choice in ("1", "2", "3"):
-            return int(choice)
-        print(Fore.RED + "Неверный выбор. Попробуй еще раз.")
-
-
-def show_intro():
-    print(Fore.RED + """
-    ██████╗ ██╗   ██╗███████╗███████╗██╗ █████╗ ██╗   ██╗    ██████╗ ██╗   ██╗██╗     ███████╗████████╗
-    ██╔══██╗██║   ██║██╔════╝██╔════╝██║██╔══██╗██║   ██║    ██╔══██╗██║   ██║██║     ██╔════╝╚══██╔══╝
-    ██████╔╝██║   ██║███████╗███████╗██║███████║██║   ██║    ██████╔╝██║   ██║██║     █████╗     ██║   
-    ██╔══██╗██║   ██║╚════██║╚════██║██║██╔══██║╚██╗ ██╔╝    ██╔══██╗██║   ██║██║     ██╔══╝     ██║   
-    ██║  ██║╚██████╔╝███████║███████║██║██║  ██║ ╚████╔╝     ██║  ██║╚██████╔╝███████╗███████╗   ██║   
-    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝╚═╝  ╚═╝  ╚═══╝      ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝   ╚═╝   
-    """)
-    time.sleep(2)
-    print(Fore.WHITE + "Добро пожаловать в русскую рулетку!")
-    print(Fore.YELLOW + "Ты готов испытать судьбу?")
-    time.sleep(1)
-
+    try:
+        response = requests.post(API_URL, headers=HEADERS, data=json.dumps(payload))
+        response.raise_for_status()  # Проверка на ошибки HTTP
+        result = response.json()
+        return result['choices'][0]['message']['content']
+    except requests.exceptions.RequestException as e:
+        return f"[Ошибка] Не удалось получить ответ от Mistral AI:\n{e}"
 
 def main():
-    show_intro()
-    revolver = Revolver()
-    alive = True
-
-    while alive:
-        choice = get_player_choice()
-
-        if choice == 1:
-            revolver.spin()
-        elif choice == 2:
-            alive = revolver.trigger_pull()
-        elif choice == 3:
-            print(Fore.GREEN + "Ты выбрал жизнь. До свидания!")
+    print("=== Chat с Mistral AI ===")
+    print("Введите 'выход' или 'exit', чтобы завершить работу.")
+    
+    while True:
+        user_input = input("\nВы: ")
+        if user_input.lower() in ['выход', 'exit', 'quit']:
+            print("Завершение работы...")
             break
-
-    print(Fore.RED + "\nИгра завершена. Спасибо за игру!")
-
+        
+        print("\nMistral думает... 🤔")
+        answer = send_query_to_mistral(user_input)
+        print(f"\nMistral ({MODEL_NAME}):")
+        print(answer)
 
 if __name__ == "__main__":
     main()
