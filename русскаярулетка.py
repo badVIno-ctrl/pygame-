@@ -17,7 +17,7 @@ def send_query_to_mistral(prompt: str) -> str:
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.7
+        "temperature": 0.1
     }
 
     try:
