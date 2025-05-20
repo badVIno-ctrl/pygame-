@@ -1,1 +1,2 @@
-игра на pygame - русская рулетка. 
+   pip install requests
+   
